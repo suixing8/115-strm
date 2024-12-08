@@ -119,7 +119,7 @@ convert_directory_tree() {
 
     # 转换目录树文件为 UTF-8 格式，以便处理（如有需要）
     converted_file="$directory_tree_dir/$directory_tree_base.converted"
-    iconv -f utf-16le -t utf-8 "$directory_tree_file" -o "$converted_file"
+    iconv -f utf-16le -t utf-8 "$directory_tree_file" > "$converted_file"
 
     # 生成的目录文件路径
     generated_directory_file="${converted_file}_目录文件.txt"
