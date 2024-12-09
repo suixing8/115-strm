@@ -296,13 +296,9 @@ delete_absent = $delete_absent
 
 # 定义常见的媒体文件扩展名，并合并用户自定义扩展名
 media_extensions = set([
-    "mp3", "flac", "wav", "aac", "ogg", "wma", "alac", "m4a",
-    "aiff", "ape", "dsf", "dff", "wv", "pcm", "tta",
     "mp4", "mkv", "avi", "mov", "wmv", "flv", "webm", "vob", "mpg", "mpeg",
-    "jpg", "jpeg", "png", "gif", "bmp", "tiff", "svg", "heic",
-    "iso", "img", "bin", "nrg", "cue", "dvd",
-    "lrc", "srt", "sub", "ssa", "ass", "vtt", "txt",
-    "pdf", "doc", "docx", "csv", "xml", "new"
+    "mp3", "flac", "wav", "aac", "ogg", "wma", "alac", "m4a", "aiff", "ape", "dsf", "dff", "wv", "pcm", "tta",
+    "iso", "dvd", "img"
 ])
 custom_extensions = set("${custom_extensions}".split())
 media_extensions.update(custom_extensions)
@@ -746,13 +742,9 @@ def create_strm_files():
         lines = file.readlines()
 
     media_extensions = {
-        'mp3', 'flac', 'wav', 'aac', 'ogg', 'wma', 'alac', 'm4a',
-        'aiff', 'ape', 'dsf', 'dff', 'wv', 'pcm', 'tta',
         'mp4', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'webm', 'vob', 'mpg', 'mpeg',
-        'jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'svg', 'heic',
-        'iso', 'img', 'bin', 'nrg', 'cue', 'dvd',
-        'lrc', 'srt', 'sub', 'ssa', 'ass', 'vtt', 'txt',
-        'pdf', 'doc', 'docx', 'csv', 'xml', 'new'
+        'mp3', 'flac', 'wav', 'aac', 'ogg', 'wma', 'alac', 'm4a', 'aiff', 'ape', 'dsf', 'dff', 'wv', 'pcm', 'tta',
+        'iso', 'dvd', 'img'
     }
 
     custom_extensions = set('$custom_extensions'.split())
