@@ -785,11 +785,11 @@ create_strm_files()
 echo \"strm文件已更新。\"
 "
 
-            script_name="updata-115-strm.sh"
+            script_name="update-115-strm.sh"
             echo "$script_content" > "$script_dir/$script_name"
 
             chmod +x "$script_dir/$script_name"
-            echo "自动更新脚本updata-115-strm已生成，请添加到任务计划，可配置定时执行，在执行前，记得先到115生成目录树。"
+            echo "自动更新脚本update-115-strm已生成，请添加到任务计划，可配置定时执行，在执行前，记得先到115生成目录树。"
             ;;
         2)
             echo "功能待实现。"
