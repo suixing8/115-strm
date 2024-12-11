@@ -13,13 +13,13 @@ read_config() {
         # shellcheck source=/dev/null
         . "$config_file"
     fi
-    update_existing="${update_existing:-1}"  # 默认值为 1（跳过）
-    delete_absent="${delete_absent:-2}"      # 默认值为 2（不删除）
+    update_existing="${update_existing:-1}" # 默认值为 1（跳过）
+    delete_absent="${delete_absent:-2}"     # 默认值为 2（不删除）
 }
 
 # 保存配置文件函数
 save_config() {
-    cat <<EOF > "$config_file"
+    cat <<EOF >"$config_file"
 directory_tree_file="$directory_tree_file"
 strm_save_path="$strm_save_path"
 alist_url="$alist_url"
@@ -32,25 +32,25 @@ EOF
 }
 
 # 检查是否安装了所需软件包或工具，若未安装则提示用户并退出
-if ! command -v python3 &> /dev/null; then
+if ! command -v python3 &>/dev/null; then
     echo "Python 3 未安装，请安装后再运行此脚本。"
     exit 1
 fi
 
 # 检查是否安装了 iconv
-if ! command -v iconv &> /dev/null; then
+if ! command -v iconv &>/dev/null; then
     echo "iconv 未安装，请安装后再运行此脚本。"
     exit 1
 fi
 
 # 检查是否安装了 sqlite3
-if ! command -v sqlite3 &> /dev/null; then
+if ! command -v sqlite3 &>/dev/null; then
     echo "sqlite3 未安装，请安装后再运行此脚本。"
     exit 1
 fi
 
 # 检查是否安装了 curl
-if ! command -v curl &> /dev/null; then
+if ! command -v curl &>/dev/null; then
     echo "curl 未安装，请安装后再运行此脚本。"
     exit 1
 fi
@@ -119,7 +119,7 @@ convert_directory_tree() {
 
     # 转换目录树文件为 UTF-8 格式，以便处理（如有需要）
     converted_file="$directory_tree_dir/$directory_tree_base.converted"
-    iconv -f utf-16le -t utf-8 "$directory_tree_file" > "$converted_file"
+    iconv -f utf-16le -t utf-8 "$directory_tree_file" >"$converted_file"
 
     # 生成的目录文件路径
     generated_directory_file="${converted_file}_目录文件.txt"
@@ -167,7 +167,7 @@ EOF
 # 自动查找可能的目录文件
 find_possible_directory_file() {
     # 扫描当前目录中以 "_目录文件.txt" 结尾的文件
-    possible_files=($(ls *_目录文件.txt 2> /dev/null | sort -V))
+    possible_files=($(ls *_目录文件.txt 2>/dev/null | sort -V))
 
     if [ ${#possible_files[@]} -eq 0 ]; then
         echo "没有找到符合条件的目录文件。"
@@ -178,19 +178,19 @@ find_possible_directory_file() {
     echo "找到以下目录文件，请选择："
     select file in "${possible_files[@]}" "输入完整路径"; do
         case $file in
-            "输入完整路径")
-                echo "请输入目录文件的完整路径："
-                read -r generated_directory_file
-                if [ ! -f "$generated_directory_file" ]; then
-                    echo "文件不存在，请重新输入。"
-                    return 1
-                fi
-                break
-                ;;
-            *)
-                generated_directory_file=$file
-                break
-                ;;
+        "输入完整路径")
+            echo "请输入目录文件的完整路径："
+            read -r generated_directory_file
+            if [ ! -f "$generated_directory_file" ]; then
+                echo "文件不存在，请重新输入。"
+                return 1
+            fi
+            break
+            ;;
+        *)
+            generated_directory_file=$file
+            break
+            ;;
         esac
     done
 }
@@ -280,10 +280,10 @@ generate_strm_files() {
     temp_new_structure=$(mktemp)
 
     # 获取现有的 .strm 文件目录结构并存入临时文件
-    find "$strm_save_path" -type f -name "*.strm" > "$temp_existing_structure"
+    find "$strm_save_path" -type f -name "*.strm" >"$temp_existing_structure"
 
-# 使用 Python 生成 .strm 文件并处理多线程与进度显示
-python3 - <<EOF
+    # 使用 Python 生成 .strm 文件并处理多线程与进度显示
+    python3 - <<EOF
 import os
 import urllib.parse
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -429,23 +429,22 @@ print("\n操作完成。")
 
 EOF
 
-# 定义当前脚本的执行目录
-script_dir=$(pwd)
+    # 定义当前脚本的执行目录
+    script_dir=$(pwd)
 
-# 清理临时文件
-for temp_file in "existing_structure.txt" "new_structure.txt" "to_create.txt" "to_delete.txt"; do
-    temp_file_path="${script_dir}/${temp_file}"
-    if [ -f "$temp_file_path" ]; then
-        rm "$temp_file_path"
-        echo "已删除临时文件：'$temp_file_path'"
-    else
-        echo "没有检测到需要删除的文件：'$temp_file_path'"
-    fi
-done
+    # 清理临时文件
+    for temp_file in "existing_structure.txt" "new_structure.txt" "to_create.txt" "to_delete.txt"; do
+        temp_file_path="${script_dir}/${temp_file}"
+        if [ -f "$temp_file_path" ]; then
+            rm "$temp_file_path"
+            echo "已删除临时文件：'$temp_file_path'"
+        else
+            echo "没有检测到需要删除的文件：'$temp_file_path'"
+        fi
+    done
 
-
-# 保存配置
-save_config
+    # 保存配置
+    save_config
 }
 # 建立 alist 索引数据库的函数
 build_index_database() {
@@ -459,22 +458,22 @@ build_index_database() {
     echo "建议备份后操作，请输入alist的data.db文件的完整路劲，上次配置:${db_file:-无}，回车确认"
     select input_db_file in *.db "输入完整路径"; do
         case $input_db_file in
-            "输入完整路径")
-                echo "请输入数据库文件的完整路径："
-                read -r input_db_file
-                if [ ! -f "$input_db_file" ]; then
-                    echo "文件不存在，请重新输入。"
-                    return
-                fi
-                break
-                ;;
-            *.db)
-                db_file=$input_db_file
-                break
-                ;;
-            *)
-                echo "无效选择，请重试。"
-                ;;
+        "输入完整路径")
+            echo "请输入数据库文件的完整路径："
+            read -r input_db_file
+            if [ ! -f "$input_db_file" ]; then
+                echo "文件不存在，请重新输入。"
+                return
+            fi
+            break
+            ;;
+        *.db)
+            db_file=$input_db_file
+            break
+            ;;
+        *)
+            echo "无效选择，请重试。"
+            ;;
         esac
     done
 
@@ -508,7 +507,7 @@ build_index_database() {
 
     # 创建临时数据库文件以存储处理结果
     temp_db_file=$(mktemp --suffix=.db)
-    
+
     python3 - <<EOF
 import sqlite3
 import os
@@ -583,30 +582,30 @@ EOF
 
     # 根据选择执行相应操作
     case $db_choice in
-        1)
-            # 新增数据到数据库
-            sqlite3 "$db_file" <<SQL
+    1)
+        # 新增数据到数据库
+        sqlite3 "$db_file" <<SQL
 ATTACH DATABASE '$temp_db_file' AS tempdb;
 INSERT INTO main.x_search_nodes (parent, name, is_dir, size)
 SELECT parent, name, is_dir, size FROM tempdb.x_search_nodes;
 DETACH DATABASE tempdb;
 SQL
-            ;;
-        2)
-            # 替换数据库表数据
-            sqlite3 "$db_file" <<SQL
+        ;;
+    2)
+        # 替换数据库表数据
+        sqlite3 "$db_file" <<SQL
 DELETE FROM x_search_nodes;
 ATTACH DATABASE '$temp_db_file' AS tempdb;
 INSERT INTO main.x_search_nodes (parent, name, is_dir, size)
 SELECT parent, name, is_dir, size FROM tempdb.x_search_nodes;
 DETACH DATABASE tempdb;
 SQL
-            ;;
-        *)
-            echo "无效的选项，操作已取消。"
-            rm "$temp_db_file"
-            return
-            ;;
+        ;;
+    *)
+        echo "无效的选项，操作已取消。"
+        rm "$temp_db_file"
+        return
+        ;;
     esac
 
     # 在数据库中创建索引
@@ -631,14 +630,12 @@ print_builtin_formats() {
     echo "其他格式: ${builtin_other_extensions[*]// /、}"
 }
 
-
 #自动更新脚本
 create_auto_update_script() {
     echo "该功能的实现，需要在每次更新时，在115手动生成目录树，并且重命名为固定的文件名，再将目录树文件移动到，挂载到alist的115目录，让脚本可以通过alist下载到目录树文件"
     echo "比如我将挂载115的目录/影视 挂载到alist，那我生成目录树后，就放到/影视 的目录或者子目录都可以，或者你也可以存放到其他平台，前提条件是下载链接要固定。"
     echo "因为脚本要获取到你在115生成的目录树，才能进行更新strm文件和alist数据库，你现在可以生成一个目录树，并且重命名，可以使用目录树.txt，以后生成的都要命名为这个。"
     echo "目前只支持strm自动更新，2和3待开发，自动更新脚本手动执行报错的话，加上sudo"
-
 
     echo "1: 创建strm文件更新脚本"
     echo "2: alist数据库更新脚本"
@@ -647,43 +644,43 @@ create_auto_update_script() {
 
     read -r script_choice
     case $script_choice in
-        1)
-            echo "请输入脚本存放目录："
-            read -r script_dir
-            
-            mkdir -p "$script_dir"
+    1)
+        echo "请输入脚本存放目录："
+        read -r script_dir
 
-            echo "请输入目录树下载的链接，在alist找到创建的目录树文件，右击复制链接："
-            read -r download_link
+        mkdir -p "$script_dir"
 
-            echo "请输入 .strm 文件保存的路径，上次配置:${strm_save_path}，回车确认："
-            read -r input_strm_save_path
-            strm_save_path="${input_strm_save_path:-$strm_save_path}"
-            mkdir -p "$strm_save_path"
+        echo "请输入目录树下载的链接，在alist找到创建的目录树文件，右击复制链接："
+        read -r download_link
 
-            echo "请输入alist的地址+端口（例如：http://abc.com:5244），上次配置:${alist_url}，回车确认："
-            read -r input_alist_url
-            alist_url="${input_alist_url:-$alist_url}"
-            if [[ "$alist_url" != */ ]]; then
-                alist_url="$alist_url/"
-            fi
+        echo "请输入 .strm 文件保存的路径，上次配置:${strm_save_path}，回车确认："
+        read -r input_strm_save_path
+        strm_save_path="${input_strm_save_path:-$strm_save_path}"
+        mkdir -p "$strm_save_path"
 
-            echo "请输入alist存储里对应的挂载路径信息，上次配置:${mount_path}，回车确认："
-            read -r input_mount_path
-            mount_path="${input_mount_path:-$mount_path}"
-            if [[ "$mount_path" == "/" ]]; then
-                mount_path=""
-            else
-                mount_path="/${mount_path#/}"
-                mount_path="${mount_path%/}"
-            fi
+        echo "请输入alist的地址+端口（例如：http://abc.com:5244），上次配置:${alist_url}，回车确认："
+        read -r input_alist_url
+        alist_url="${input_alist_url:-$alist_url}"
+        if [[ "$alist_url" != */ ]]; then
+            alist_url="$alist_url/"
+        fi
 
-            echo "请输入剔除选项（输入要剔除的目录层级数量，默认为2），上次配置:${exclude_option}，回车确认："
-            read -r input_exclude_option
-            exclude_option=${input_exclude_option:-2}
+        echo "请输入alist存储里对应的挂载路径信息，上次配置:${mount_path}，回车确认："
+        read -r input_mount_path
+        mount_path="${input_mount_path:-$mount_path}"
+        if [[ "$mount_path" == "/" ]]; then
+            mount_path=""
+        else
+            mount_path="/${mount_path#/}"
+            mount_path="${mount_path%/}"
+        fi
 
-# 定义脚本内容
-script_content="#!/bin/bash
+        echo "请输入剔除选项（输入要剔除的目录层级数量，默认为2），上次配置:${exclude_option}，回车确认："
+        read -r input_exclude_option
+        exclude_option=${input_exclude_option:-2}
+
+        # 定义脚本内容
+        script_content="#!/bin/bash
 # 下载目录树文件
 curl -L \"$download_link\" -o \"$script_dir/目录树.txt\"
 
@@ -785,24 +782,24 @@ create_strm_files()
 echo \"strm文件已更新。\"
 "
 
-            script_name="update-115-strm.sh"
-            echo "$script_content" > "$script_dir/$script_name"
+        script_name="update-115-strm.sh"
+        echo "$script_content" >"$script_dir/$script_name"
 
-            chmod +x "$script_dir/$script_name"
-            echo "自动更新脚本update-115-strm已生成，请添加到任务计划，可配置定时执行，在执行前，记得先到115生成目录树。"
-            ;;
-        2)
-            echo "功能待实现。"
-            ;;
-        3)
-            echo "功能待实现。"
-            ;;
-        0)
-            echo "返回主菜单。"
-            ;;
-        *)
-            echo "无效的选项，请输入 0、1、2 或 3。"
-            ;;
+        chmod +x "$script_dir/$script_name"
+        echo "自动更新脚本update-115-strm已生成，请添加到任务计划，可配置定时执行，在执行前，记得先到115生成目录树。"
+        ;;
+    2)
+        echo "功能待实现。"
+        ;;
+    3)
+        echo "功能待实现。"
+        ;;
+    0)
+        echo "返回主菜单。"
+        ;;
+    *)
+        echo "无效的选项，请输入 0、1、2 或 3。"
+        ;;
     esac
 }
 # 高级配置函数
@@ -821,7 +818,7 @@ advanced_configuration() {
 
     # 转换为小写并去重
     new_extensions=$(echo "$user_input" | tr ' ' '\n' | tr '[:upper:]' '[:lower:]' | sort -u)
-    
+
     # 更新全局变量
     for ext in $new_extensions; do
         if ! echo "$custom_extensions" | grep -qw "$ext"; then
@@ -850,7 +847,7 @@ advanced_configuration() {
 
     # 转换为小写并去重
     new_extensions=$(echo "$user_input" | tr ' ' '\n' | tr '[:upper:]' '[:lower:]' | sort -u)
-    
+
     # 更新全局变量
     for ext in $new_extensions; do
         if ! echo "$custom_extensions" | grep -qw "$ext"; then
@@ -870,34 +867,34 @@ while true; do
     # 读取用户选择
     read -r choice
     case $choice in
-        1)
-            # 选择1：将目录树转换为目录文件
-            convert_directory_tree
-            ;;
-        2)
-            # 选择2：生成 .strm 文件
-            generate_strm_files
-            ;;
-        3)
-            # 选择3：建立 alist 索引数据库
-            build_index_database
-            ;;
-        4)
-            # 选择4：创建自动更新脚本
-            create_auto_update_script
-            ;;
-        5)
-            # 选择5：进行高级配置，添加非标准文件格式
-            advanced_configuration
-            ;;
-        0)
-            # 选择0：退出程序
-            echo "退出程序。"
-            break
-            ;;
-        *)
-            # 处理无效输入
-            echo "无效的选项，请输入 0、1、2、3、4 或 5。"
-            ;;
+    1)
+        # 选择1：将目录树转换为目录文件
+        convert_directory_tree
+        ;;
+    2)
+        # 选择2：生成 .strm 文件
+        generate_strm_files
+        ;;
+    3)
+        # 选择3：建立 alist 索引数据库
+        build_index_database
+        ;;
+    4)
+        # 选择4：创建自动更新脚本
+        create_auto_update_script
+        ;;
+    5)
+        # 选择5：进行高级配置，添加非标准文件格式
+        advanced_configuration
+        ;;
+    0)
+        # 选择0：退出程序
+        echo "退出程序。"
+        break
+        ;;
+    *)
+        # 处理无效输入
+        echo "无效的选项，请输入 0、1、2、3、4 或 5。"
+        ;;
     esac
 done
