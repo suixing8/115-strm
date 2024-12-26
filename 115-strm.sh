@@ -11,7 +11,7 @@ config_file="$HOME/.115-strm.conf"
 read_config() {
     if [ -f "$config_file" ]; then
         # shellcheck source=/dev/null
-        . "$config_file"
+        。 "$config_file"
     fi
     update_existing="${update_existing:-1}" # 默认值为 1（跳过）
     delete_absent="${delete_absent:-2}"     # 默认值为 2（不删除）
@@ -589,6 +589,14 @@ ATTACH DATABASE '$temp_db_file' AS tempdb;
 INSERT INTO main.x_search_nodes (parent, name, is_dir, size)
 SELECT parent, name, is_dir, size FROM tempdb.x_search_nodes;
 DETACH DATABASE tempdb;
+
+-- 去重逻辑
+DELETE FROM x_search_nodes 
+WHERE rowid NOT IN (
+    SELECT MIN(rowid)
+    FROM x_search_nodes
+    GROUP BY parent, name
+);
 SQL
         ;;
     2)
