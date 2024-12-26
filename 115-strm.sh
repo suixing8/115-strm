@@ -11,7 +11,7 @@ config_file="$HOME/.115-strm.conf"
 read_config() {
     if [ -f "$config_file" ]; then
         # shellcheck source=/dev/null
-        。 "$config_file"
+        . "$config_file"
     fi
     update_existing="${update_existing:-1}" # 默认值为 1（跳过）
     delete_absent="${delete_absent:-2}"     # 默认值为 2（不删除）
