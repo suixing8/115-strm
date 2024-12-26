@@ -16,6 +16,9 @@ https://115.com/s/swhspho33xj?password=0000#
 音乐22万首14.39T音乐包3
 访问码：0000
 
+https://anxia.com/s/swz0yco3zhz?password=1158
+音乐包【880G】
+访问码：1158
 
 # 测试环境
 系统ubuntu20<br><br>
@@ -84,7 +87,8 @@ strm文件测试，随便打开一个strm文件，复制链接粘贴到浏览器
 
 ![image](https://github.com/user-attachments/assets/dd9a8fd0-9b0e-4c75-ad6e-d217d27e4fc9)<br><br>
 
-
+如果是音乐，推荐使用音流+emby<br><br>
+https://github.com/gitbobobo/StreamMusic<br><br>
 ## 3: 建立alist索引数据库
 
 alsit版本不能太低，最好在v3.37.x以后的版本,
