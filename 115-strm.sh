@@ -82,7 +82,7 @@ show_menu() {
 # 其他功能菜单
 other_functions_menu() {
     echo "其他功能："
-    echo "1: 去除文件格式，如果有字幕建议提前下载好"
+    echo "1: 去除文件格式，如果有字幕建议提前下载好，比如xx.mp4.strm，去除后为xx.strm"
     echo "0: 返回主菜单"
 }
 
