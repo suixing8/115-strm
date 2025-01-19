@@ -63,11 +63,13 @@ show_menu() {
     echo "请选择操作："
     echo "1: 将目录树转换为目录文件"
     echo "2: 生成 .strm 文件"
-    echo "3: 建立alist索引数据库"
+    echo "3: 建立 alist 索引数据库"
     echo "4: 创建自动更新脚本"
     echo "5: 高级配置（处理非常见媒体文件时使用）"
+    echo "6: 扫描并下载字幕文件"
     echo "0: 退出"
 }
+
 
 # 初始化全局变量，存储生成的目录文件路径和自定义扩展名
 generated_directory_file="${generated_directory_file:-}"
@@ -881,6 +883,84 @@ advanced_configuration() {
     save_config
 }
 
+# 下载用户指定格式文件的函数
+download_specified_files() {
+    echo "请输入 .strm 文件所在目录路径（例如：/path/to/strm/files）："
+    read -r strm_directory
+    while [ ! -d "$strm_directory" ]; do
+        echo "路径无效，请重新输入有效路径（必须是存在的目录）："
+        read -r strm_directory
+    done
+
+    echo "如果不间隔时间可能引起风控，请输入每个文件下载之间的间隔时间（秒），默认为 3 秒："
+    read -r interval_time
+    interval_time="${interval_time:-3}"
+
+    echo "请输入要处理的文件格式，使用空格分隔（例如：ass srt sub jpg）："
+    read -r user_formats
+
+    # 将用户输入的格式转换为小写并存入数组
+    IFS=' ' read -r -a specified_formats <<< "$(echo "$user_formats" | tr '[:upper:]' '[:lower:]')"
+
+    temp_download_list=$(mktemp)
+
+    echo "正在扫描目录 $strm_directory 中的指定文件格式 .strm..."
+    find "$strm_directory" -type f -name "*.strm" >"$temp_download_list"
+
+    total_files=$(wc -l <"$temp_download_list")
+    if [ "$total_files" -eq 0 ]; then
+        echo "目录中没有发现任何指定格式的 .strm，请检查路径或文件内容。"
+        rm "$temp_download_list"
+        return
+    fi
+
+    # 下载指定格式的文件
+    downloaded_count=0
+    while IFS= read -r strm_file; do
+        # 检查文件是否为用户指定的格式
+        url=$(cat "$strm_file")
+        file_extension=$(basename "$url" | awk -F. '{print tolower($NF)}')
+
+        if [[ " ${specified_formats[*]} " == *" $file_extension "* ]]; then
+            target_dir=$(dirname "$strm_file")
+            original_filename=$(basename "$strm_file" .strm)
+            target_file="$target_dir/$original_filename"
+
+            echo "正在下载文件：$url"
+            curl -L -o "$target_file" "$url"
+
+            if [ $? -eq 0 ]; then
+                echo "文件下载完成：$target_file"
+                rm "$strm_file"
+                echo "已删除对应的 .strm 文件：$strm_file"
+                downloaded_count=$((downloaded_count + 1))
+            else
+                echo "文件下载失败：$url"
+            fi
+
+            # 等待设定的间隔时间
+            sleep "$interval_time"
+        else
+            echo "跳过非指定格式文件：$strm_file"
+        fi
+    done <"$temp_download_list"
+
+    echo "文件下载完成，共处理 $total_files 个 .strm 文件，成功下载 $downloaded_count 个文件。"
+    rm "$temp_download_list"
+}
+
+# 显示主菜单的函数
+show_menu() {
+    echo "请选择操作："
+    echo "1: 将目录树转换为目录文件"
+    echo "2: 生成 .strm 文件"
+    echo "3: 建立 alist 索引数据库"
+    echo "4: 创建自动更新脚本"
+    echo "5: 高级配置（处理非常见媒体文件时使用）"
+    echo "6: 扫描并下载指定格式文件"
+    echo "0: 退出"
+}
+
 # 主循环，持续显示菜单并处理用户输入
 while true; do
     show_menu
@@ -907,6 +987,10 @@ while true; do
         # 选择5：进行高级配置，添加非标准文件格式
         advanced_configuration
         ;;
+    6)
+        # 选择6：扫描并下载指定格式文件
+        download_specified_files
+        ;;
     0)
         # 选择0：退出程序
         echo "退出程序。"
@@ -914,7 +998,7 @@ while true; do
         ;;
     *)
         # 处理无效输入
-        echo "无效的选项，请输入 0、1、2、3、4 或 5。"
+        echo "无效的选项，请输入 0、1、2、3、4、5 或 6。"
         ;;
     esac
 done
