@@ -915,28 +915,35 @@ download_specified_files() {
         read -r strm_directory
     done
     last_strm_directory="$strm_directory"  # 保存用户输入
+    save_config  # 保存配置到文件
 
     # 扫描目录以发现存在的文件格式
     echo "正在扫描目录 $strm_directory 中的 .strm 文件格式..."
     formats_found=()
     while IFS= read -r -d '' strm_file; do
-        file_extension=$(basename "$strm_file" .strm | awk -F. '{print tolower($NF)}')
-        if [[ ! " ${formats_found[*]} " =~ " $file_extension " ]]; then
-            formats_found+=("$file_extension")
+        # 提取文件名去掉.strm后缀，再获取其扩展名
+        file_extension="${strm_file##*.}"
+        basename_without_strm=$(basename "$strm_file" .strm)
+        actual_extension="${basename_without_strm##*.}"
+
+        # 只将带有格式的文件记录下来，如xxx.mp4.strm
+        if [ "$actual_extension" != "$basename_without_strm" ]; then
+            formats_found+=("$actual_extension")
         fi
     done < <(find "$strm_directory" -type f -name "*.strm" -print0)
 
     if [ ${#formats_found[@]} -eq 0 ]; then
-        echo "目录中没有发现任何 .strm 文件，请检查路径或文件内容。"
+        echo "没有扫描到任何带格式的 .strm 文件。"
         return
     fi
 
     echo "扫描到以下文件格式："
-    echo "${formats_found[*]}"
+    unique_formats=($(echo "${formats_found[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
+    echo "${unique_formats[*]}"
 
     # 检查上次输入的文件格式
     if [ -n "$last_user_formats" ]; then
-        echo "请输入要处理的文件格式，使用空格分隔（例如：ass srt sub jpg），上次配置:${last_user_formats}，回车确认："
+        echo "请输入要处理的文件格式，使用空格分隔（例如：mp4 ass mov），上次配置:${last_user_formats}，回车确认："
     else
         echo "请输入要处理的文件格式，使用空格分隔："
     fi
@@ -961,7 +968,7 @@ download_specified_files() {
 
         total_files=$(wc -l <"$temp_download_list")
         if [ "$total_files" -eq 0 ]; then
-            echo "目录中没有发现任何指定格式的 .strm，请检查路径或文件内容。"
+            echo "目录中没有发现任何带有指定格式的 .strm，请检查路径或文件内容。"
             rm "$temp_download_list"
             return
         fi
@@ -1023,6 +1030,7 @@ download_specified_files() {
         fi
     done
 }
+
 
 # 去除文件格式的函数
 remove_file_extension() {
