@@ -58,7 +58,6 @@ fi
 read_config
 
 show_menu() {
-    echo "调试：正在显示主菜单"
     echo "请选择操作："
     echo "1: 将目录树转换为目录文件"
     echo "2: 生成 .strm 文件"
@@ -893,79 +892,131 @@ advanced_configuration() {
 
 # 下载用户指定格式文件的函数
 download_specified_files() {
-    echo "请输入 .strm 文件所在目录路径（例如：/path/to/strm/files）："
-    read -r strm_directory
+    # 检查是否已有上次输入的路径
+    if [ -n "$last_strm_directory" ]; then
+        echo "请输入 .strm 文件所在目录路径（例如：/path/to/strm/files），上次配置:${last_strm_directory}，回车确认："
+    else
+        echo "请输入 .strm 文件所在目录路径（例如：/path/to/strm/files）："
+    fi
+    read -r input_strm_directory
+    strm_directory="${input_strm_directory:-$last_strm_directory}"
     while [ ! -d "$strm_directory" ]; do
         echo "路径无效，请重新输入有效路径（必须是存在的目录）："
         read -r strm_directory
     done
+    last_strm_directory="$strm_directory"  # 保存用户输入
 
-    echo "如果不间隔时间可能引起风控，请输入每个文件下载之间的间隔时间（秒），默认为 3 秒："
-    read -r interval_time
-    interval_time="${interval_time:-3}"
+    # 检查上次输入的间隔时间
+    if [ -n "$last_interval_time" ]; then
+        echo "如果不间隔时间可能引起风控，请输入每个文件下载之间的间隔时间（秒），上次配置:${last_interval_time}，默认为 3 秒："
+    else
+        echo "如果不间隔时间可能引起风控，请输入每个文件下载之间的间隔时间（秒），默认为 3 秒："
+    fi
+    read -r input_interval_time
+    interval_time="${input_interval_time:-$last_interval_time}"
+    interval_time="${interval_time:-3}"  # 默认值
+    last_interval_time="$interval_time"  # 保存用户输入
 
-    echo "请输入要处理的文件格式，使用空格分隔（例如：ass srt sub jpg）："
-    read -r user_formats
+    # 检查上次输入的文件格式
+    if [ -n "$last_user_formats" ]; then
+        echo "请输入要处理的文件格式，使用空格分隔（例如：ass srt sub jpg），上次配置:${last_user_formats}，回车确认："
+    else
+        echo "请输入要处理的文件格式，使用空格分隔（例如：ass srt sub jpg）："
+    fi
+    read -r input_user_formats
+    user_formats="${input_user_formats:-$last_user_formats}"
+    last_user_formats="$user_formats"  # 保存用户输入
 
     # 将用户输入的格式转换为小写并存入数组
     IFS=' ' read -r -a specified_formats <<< "$(echo "$user_formats" | tr '[:upper:]' '[:lower:]')"
 
-    temp_download_list=$(mktemp)
+    while true; do
+        temp_download_list=$(mktemp)
+        
+        echo "正在扫描目录 $strm_directory 中的指定文件格式 .strm..."
+        find "$strm_directory" -type f -name "*.strm" >"$temp_download_list"
 
-    echo "正在扫描目录 $strm_directory 中的指定文件格式 .strm..."
-    find "$strm_directory" -type f -name "*.strm" >"$temp_download_list"
-
-    total_files=$(wc -l <"$temp_download_list")
-    if [ "$total_files" -eq 0 ]; then
-        echo "目录中没有发现任何指定格式的 .strm，请检查路径或文件内容。"
-        rm "$temp_download_list"
-        return
-    fi
-
-    # 下载指定格式的文件
-    downloaded_count=0
-    while IFS= read -r strm_file; do
-        # 检查文件是否为用户指定的格式
-        url=$(cat "$strm_file")
-        file_extension=$(basename "$url" | awk -F. '{print tolower($NF)}')
-
-        if [[ " ${specified_formats[*]} " == *" $file_extension "* ]]; then
-            target_dir=$(dirname "$strm_file")
-            original_filename=$(basename "$strm_file" .strm)
-            target_file="$target_dir/$original_filename"
-
-            echo "正在下载文件：$url"
-            curl -L -o "$target_file" "$url"
-
-            if [ $? -eq 0 ]; then
-                echo "文件下载完成：$target_file"
-                rm "$strm_file"
-                echo "已删除对应的 .strm 文件：$strm_file"
-                downloaded_count=$((downloaded_count + 1))
-            else
-                echo "文件下载失败：$url"
-            fi
-
-            # 等待设定的间隔时间
-            sleep "$interval_time"
-        else
-            echo "跳过非指定格式文件：$strm_file"
+        total_files=$(wc -l <"$temp_download_list")
+        if [ "$total_files" -eq 0 ]; then
+            echo "目录中没有发现任何指定格式的 .strm，请检查路径或文件内容。"
+            rm "$temp_download_list"
+            return
         fi
-    done <"$temp_download_list"
 
-    echo "文件下载完成，共处理 $total_files 个 .strm 文件，成功下载 $downloaded_count 个文件。"
-    rm "$temp_download_list"
+        # 下载指定格式的文件
+        downloaded_count=0
+        small_file_count=0
+        
+        while IFS= read -r strm_file; do
+            # 检查文件是否为用户指定的格式
+            url=$(cat "$strm_file")
+            file_extension=$(basename "$url" | awk -F. '{print tolower($NF)}')
+
+            if [[ " ${specified_formats[*]} " == *" $file_extension "* ]]; then
+                target_dir=$(dirname "$strm_file")
+                original_filename=$(basename "$strm_file" .strm)
+                target_file="$target_dir/$original_filename"
+
+                echo "正在下载文件：$url"
+                curl -L -o "$target_file" "$url"
+
+                if [ $? -eq 0 ]; then
+                    file_size=$(stat -c%s "$target_file")
+                    if [ "$file_size" -gt 1024 ]; then
+                        echo "文件下载完成：$target_file"
+                        rm "$strm_file"
+                        echo "已删除对应的 .strm 文件：$strm_file"
+                        downloaded_count=$((downloaded_count + 1))
+                        small_file_count=0  # 重置计数器
+                    else
+                        echo "文件下载失败（小于1KB），删除下载文件，保留 .strm 文件：$strm_file"
+                        rm "$target_file"
+                        small_file_count=$((small_file_count + 1))
+                    fi
+                else
+                    echo "文件下载失败：$url"
+                fi
+
+                # 如果连续5次小于1KB，等待1小时
+                if [ "$small_file_count" -ge 5 ]; then
+                    echo "连续5次下载文件小于1KB，等待1小时..."
+                    sleep 1h
+                    break
+                fi
+
+                # 等待设定的间隔时间
+                sleep "$interval_time"
+            else
+                echo "跳过非指定格式文件：$strm_file"
+            fi
+        done <"$temp_download_list"
+
+        echo "文件下载完成，共处理 $total_files 个 .strm 文件，成功下载 $downloaded_count 个文件。"
+        rm "$temp_download_list"
+
+        # 如果没有连续小文件下载，正常退出循环
+        if [ "$small_file_count" -lt 5 ]; then
+            break
+        fi
+    done
 }
 
-# 去除文件格式的函数
+
 # 去除文件格式的函数
 remove_file_extension() {
-    echo "请输入 .strm 文件所在目录路径（例如：/path/to/strm/files）："
-    read -r strm_directory
+    # 检查是否已有上次输入的路径
+    if [ -n "$last_strm_directory" ]; then
+        echo "请输入 .strm 文件所在目录路径（例如：/path/to/strm/files），上次配置:${last_strm_directory}，回车确认："
+    else
+        echo "请输入 .strm 文件所在目录路径（例如：/path/to/strm/files）："
+    fi
+    read -r input_strm_directory
+    strm_directory="${input_strm_directory:-$last_strm_directory}"
     while [ ! -d "$strm_directory" ]; do
         echo "路径无效，请重新输入有效路径（必须是存在的目录）："
         read -r strm_directory
     done
+    last_strm_directory="$strm_directory"  # 保存用户输入
 
     echo "正在扫描目录 $strm_directory 中的所有 .strm 文件..."
 
