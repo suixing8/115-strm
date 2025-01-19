@@ -906,22 +906,29 @@ download_specified_files() {
     done
     last_strm_directory="$strm_directory"  # 保存用户输入
 
-    # 检查上次输入的间隔时间
-    if [ -n "$last_interval_time" ]; then
-        echo "如果不间隔时间可能引起风控，请输入每个文件下载之间的间隔时间（秒），上次配置:${last_interval_time}，默认为 3 秒："
-    else
-        echo "如果不间隔时间可能引起风控，请输入每个文件下载之间的间隔时间（秒），默认为 3 秒："
+    # 扫描目录以发现存在的文件格式
+    echo "正在扫描目录 $strm_directory 中的 .strm 文件格式..."
+    formats_found=()
+    while IFS= read -r -d '' strm_file; do
+        file_extension=$(basename "$strm_file" .strm | awk -F. '{print tolower($NF)}')
+        if [[ ! " ${formats_found[*]} " =~ " $file_extension " ]]; then
+            formats_found+=("$file_extension")
+        fi
+    done < <(find "$strm_directory" -type f -name "*.strm" -print0)
+
+    if [ ${#formats_found[@]} -eq 0 ]; then
+        echo "目录中没有发现任何 .strm 文件，请检查路径或文件内容。"
+        return
     fi
-    read -r input_interval_time
-    interval_time="${input_interval_time:-$last_interval_time}"
-    interval_time="${interval_time:-3}"  # 默认值
-    last_interval_time="$interval_time"  # 保存用户输入
+
+    echo "扫描到以下文件格式："
+    echo "${formats_found[*]}"
 
     # 检查上次输入的文件格式
     if [ -n "$last_user_formats" ]; then
         echo "请输入要处理的文件格式，使用空格分隔（例如：ass srt sub jpg），上次配置:${last_user_formats}，回车确认："
     else
-        echo "请输入要处理的文件格式，使用空格分隔（例如：ass srt sub jpg）："
+        echo "请输入要处理的文件格式，使用空格分隔："
     fi
     read -r input_user_formats
     user_formats="${input_user_formats:-$last_user_formats}"
@@ -929,6 +936,12 @@ download_specified_files() {
 
     # 将用户输入的格式转换为小写并存入数组
     IFS=' ' read -r -a specified_formats <<< "$(echo "$user_formats" | tr '[:upper:]' '[:lower:]')"
+
+    echo "如果不间隔时间可能引起风控，请输入每个文件下载之间的间隔时间（秒），默认为 3 秒："
+    read -r input_interval_time
+    interval_time="${input_interval_time:-$last_interval_time}"
+    interval_time="${interval_time:-3}"  # 默认值
+    last_interval_time="$interval_time"  # 保存用户输入
 
     while true; do
         temp_download_list=$(mktemp)
@@ -1000,7 +1013,6 @@ download_specified_files() {
         fi
     done
 }
-
 
 # 去除文件格式的函数
 remove_file_extension() {
