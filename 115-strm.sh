@@ -1,5 +1,4 @@
 #!/bin/bash
-
 # 设置 UTF-8 环境，确保字符编码一致
 export LANG=en_US.UTF-8
 export LC_ALL=en_US.UTF-8
@@ -58,17 +57,26 @@ fi
 # 初始化配置
 read_config
 
-# 显示主菜单的函数
 show_menu() {
+    echo "调试：正在显示主菜单"
     echo "请选择操作："
     echo "1: 将目录树转换为目录文件"
     echo "2: 生成 .strm 文件"
     echo "3: 建立 alist 索引数据库"
     echo "4: 创建自动更新脚本"
     echo "5: 高级配置（处理非常见媒体文件时使用）"
-    echo "6: 扫描并下载字幕文件"
+    echo "6: 扫描并下载指定格式文件"
+    echo "7: 其他功能"
     echo "0: 退出"
 }
+
+# 其他功能菜单
+other_functions_menu() {
+    echo "其他功能："
+    echo "1: 去除文件格式，如果有字幕建议提前下载好"
+    echo "0: 返回主菜单"
+}
+
 
 
 # 初始化全局变量，存储生成的目录文件路径和自定义扩展名
@@ -949,18 +957,141 @@ download_specified_files() {
     rm "$temp_download_list"
 }
 
-# 显示主菜单的函数
-show_menu() {
-    echo "请选择操作："
-    echo "1: 将目录树转换为目录文件"
-    echo "2: 生成 .strm 文件"
-    echo "3: 建立 alist 索引数据库"
-    echo "4: 创建自动更新脚本"
-    echo "5: 高级配置（处理非常见媒体文件时使用）"
-    echo "6: 扫描并下载指定格式文件"
-    echo "0: 退出"
-}
+# 去除文件格式的函数
+# 去除文件格式的函数
+remove_file_extension() {
+    echo "请输入 .strm 文件所在目录路径（例如：/path/to/strm/files）："
+    read -r strm_directory
+    while [ ! -d "$strm_directory" ]; do
+        echo "路径无效，请重新输入有效路径（必须是存在的目录）："
+        read -r strm_directory
+    done
 
+    echo "正在扫描目录 $strm_directory 中的所有 .strm 文件..."
+
+    # 存储冲突文件的映射
+    declare -A target_files
+    declare -a all_files
+    declare -a rename_operations
+
+    # 扫描 .strm 文件
+    while IFS= read -r -d '' strm_file; do
+        base_name=$(basename "$strm_file")
+        new_name=$(echo "$base_name" | sed 's/\.[^.]*\.strm$/\.strm/')
+        target_path="$(dirname "$strm_file")/$new_name"
+
+        all_files+=("$strm_file")
+        rename_operations+=("$strm_file -> $target_path")
+
+        # 如果文件名发生变化，记录潜在冲突
+        if [ "$base_name" != "$new_name" ]; then
+            if [ -n "${target_files[$target_path]}" ]; then
+                target_files["$target_path"]+=$'\n'"$strm_file"
+            else
+                target_files["$target_path"]="$strm_file"
+            fi
+        fi
+    done < <(find "$strm_directory" -type f -name "*.strm" -print0)
+
+    # 显示扫描结果
+    echo "扫描完毕。以下是即将执行的文件重命名操作："
+    echo "================================================================"
+    for operation in "${rename_operations[@]}"; do
+        echo "$operation"
+    done
+
+    # 检测冲突文件并优化输出
+    has_conflicts=false
+    conflict_count=0
+    if [ ${#target_files[@]} -gt 0 ]; then
+        for target in "${!target_files[@]}"; do
+            # 如果目标文件已存在，或者来自多个源文件
+            if [ -e "$target" ] || [[ "${target_files[$target]}" == *$'\n'* ]]; then
+                has_conflicts=true
+            fi
+        done
+    fi
+
+    if [ "$has_conflicts" = true ]; then
+        echo ""
+        echo "注意：以下文件重命名后会产生文件名冲突："
+        echo "================================================================"
+        for target in "${!target_files[@]}"; do
+            conflict_sources=$(echo -e "${target_files[$target]}")
+            if [ -e "$target" ] || [[ "$conflict_sources" == *$'\n'* ]]; then
+                conflict_count=$((conflict_count + 1))
+                echo "序号${conflict_count}"
+                echo "目标文件：$target"
+                echo "冲突文件："
+                echo "$conflict_sources" | while IFS= read -r line; do
+                    echo "  - $line"
+                done
+                echo "================================================================"
+            fi
+        done
+    fi
+
+    echo ""
+    echo "请选择如何处理这些冲突文件："
+    echo "1. 覆盖冲突文件"
+    echo "2. 跳过冲突文件"
+    echo "3. 自动重命名冲突文件（生成唯一名称）"
+    echo "4. 取消操作"
+    
+    read -r user_choice
+    case $user_choice in
+    1|2|3)
+        ;;
+    4)
+        echo "操作已取消，返回主菜单。"
+        return
+        ;;
+    *)
+        echo "无效选项，操作取消。"
+        return
+        ;;
+    esac
+
+    echo "正在处理文件..."
+
+    # 执行文件重命名
+    for strm_file in "${all_files[@]}"; do
+        base_name=$(basename "$strm_file")
+        new_name=$(echo "$base_name" | sed 's/\.[^.]*\.strm$/\.strm/')
+        target_path="$(dirname "$strm_file")/$new_name"
+
+        if [ "$base_name" != "$new_name" ]; then
+            if [ -e "$target_path" ]; then
+                case $user_choice in
+                1) # 覆盖
+                    echo "覆盖文件：$target_path"
+                    mv -f "$strm_file" "$target_path"
+                    ;;
+                2) # 跳过
+                    echo "跳过文件：$base_name"
+                    ;;
+                3) # 自动重命名
+                    counter=1
+                    new_target_path="${target_path%.*}(${counter}).strm"
+                    while [ -e "$new_target_path" ]; do
+                        counter=$((counter + 1))
+                        new_target_path="${target_path%.*}(${counter}).strm"
+                    done
+                    echo "自动重命名文件为：$new_target_path"
+                    mv "$strm_file" "$new_target_path"
+                    ;;
+                esac
+            else
+                echo "重命名文件：$base_name 为 $new_name"
+                mv "$strm_file" "$target_path"
+            fi
+        else
+            echo "文件无需重命名：$base_name"
+        fi
+    done
+
+    echo "文件处理完成。"
+}
 # 主循环，持续显示菜单并处理用户输入
 while true; do
     show_menu
@@ -991,6 +1122,26 @@ while true; do
         # 选择6：扫描并下载指定格式文件
         download_specified_files
         ;;
+    7)
+        # 选择7：进入其他功能菜单
+        while true; do
+            other_functions_menu
+            read -r sub_choice
+            case $sub_choice in
+            1)
+                # 执行去除文件格式的功能
+                remove_file_extension
+                ;;
+            0)
+                # 返回主菜单
+                break
+                ;;
+            *)
+                echo "无效的选项，请输入 0 或 1。"
+                ;;
+            esac
+        done
+        ;;
     0)
         # 选择0：退出程序
         echo "退出程序。"
@@ -998,7 +1149,7 @@ while true; do
         ;;
     *)
         # 处理无效输入
-        echo "无效的选项，请输入 0、1、2、3、4、5 或 6。"
+        echo "无效的选项，请输入 0、1、2、3、4、5、6 或 7。"
         ;;
     esac
 done
