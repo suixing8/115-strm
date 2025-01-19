@@ -14,7 +14,13 @@ read_config() {
     fi
     update_existing="${update_existing:-1}" # 默认值为 1（跳过）
     delete_absent="${delete_absent:-2}"     # 默认值为 2（不删除）
+    last_strm_directory="${last_strm_directory:-}"
+    last_interval_time="${last_interval_time:-3}"
+    last_user_formats="${last_user_formats:-}"
+    exclude_option="${exclude_option:-2}"   # 确保 exclude_option 有默认值
 }
+
+
 
 # 保存配置文件函数
 save_config() {
@@ -27,8 +33,12 @@ exclude_option="$exclude_option"
 custom_extensions="$custom_extensions"
 update_existing="$update_existing"
 delete_absent="$delete_absent"
+last_strm_directory="$last_strm_directory"
+last_interval_time="$last_interval_time"
+last_user_formats="$last_user_formats"
 EOF
 }
+
 
 # 检查是否安装了所需软件包或工具，若未安装则提示用户并退出
 if ! command -v python3 &>/dev/null; then
@@ -1065,12 +1075,13 @@ remove_file_extension() {
 
     # 检测冲突文件并优化输出
     has_conflicts=false
-    conflict_count=0
+
     if [ ${#target_files[@]} -gt 0 ]; then
         for target in "${!target_files[@]}"; do
             # 如果目标文件已存在，或者来自多个源文件
             if [ -e "$target" ] || [[ "${target_files[$target]}" == *$'\n'* ]]; then
                 has_conflicts=true
+                break
             fi
         done
     fi
@@ -1082,8 +1093,6 @@ remove_file_extension() {
         for target in "${!target_files[@]}"; do
             conflict_sources=$(echo -e "${target_files[$target]}")
             if [ -e "$target" ] || [[ "$conflict_sources" == *$'\n'* ]]; then
-                conflict_count=$((conflict_count + 1))
-                echo "序号${conflict_count}"
                 echo "目标文件：$target"
                 echo "冲突文件："
                 echo "$conflict_sources" | while IFS= read -r line; do
@@ -1092,32 +1101,31 @@ remove_file_extension() {
                 echo "================================================================"
             fi
         done
+
+        echo ""
+        echo "请选择如何处理这些冲突文件："
+        echo "1. 覆盖冲突文件"
+        echo "2. 跳过冲突文件"
+        echo "3. 自动重命名冲突文件（生成唯一名称）"
+        echo "4. 取消操作"
+
+        read -r user_choice
+        case $user_choice in
+        1|2|3)
+            ;;
+        4)
+            echo "操作已取消，返回主菜单。"
+            return
+            ;;
+        *)
+            echo "无效选项，操作取消。"
+            return
+            ;;
+        esac
     fi
 
-    echo ""
-    echo "请选择如何处理这些冲突文件："
-    echo "1. 覆盖冲突文件"
-    echo "2. 跳过冲突文件"
-    echo "3. 自动重命名冲突文件（生成唯一名称）"
-    echo "4. 取消操作"
-    
-    read -r user_choice
-    case $user_choice in
-    1|2|3)
-        ;;
-    4)
-        echo "操作已取消，返回主菜单。"
-        return
-        ;;
-    *)
-        echo "无效选项，操作取消。"
-        return
-        ;;
-    esac
-
+    # 处理文件
     echo "正在处理文件..."
-
-    # 执行文件重命名
     for strm_file in "${all_files[@]}"; do
         base_name=$(basename "$strm_file")
         new_name=$(echo "$base_name" | sed 's/\.[^.]*\.strm$/\.strm/')
@@ -1155,6 +1163,7 @@ remove_file_extension() {
 
     echo "文件处理完成。"
 }
+
 # 主循环，持续显示菜单并处理用户输入
 while true; do
     show_menu
