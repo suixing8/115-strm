@@ -130,7 +130,7 @@ alsit版本不能太低，最好在v3.37.x以后的版本,
 # 最后，转发请注明出处
 感谢ChatGPT-4o提供的代码<br><br>
 感谢[@uwang](https://github.com/uwang)<br><br>
-联系https://t.me/gengpengw
+联系https://t.me/suixing6
 
 
 
